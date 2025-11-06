@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Math Facts Sprint</title>
+  <style>
+    :root {
+      --bg: #0b1020; /* deep night blue */
+      --panel: #121a33;
+      --ink: #e7eefc;
+      --muted: #9fb0d6;
+      --accent: #7aa2ff;
+      --red: #ff5d5d;
+      --orange: #ffa149;
+      --yellow: #ffe24a;
+      --green: #39d98a;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      color: var(--ink); background: linear-gradient(160deg, #0a0f1d, #0d1326 60%, #0b1020);
+      display: grid; place-items: center; padding: 24px;
+    }
+    .app { width: min(960px, 100%); }
+    .card { background: var(--panel); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+    h1 { margin: 0 0 6px 0; font-weight: 800; letter-spacing: .2px; }
+    .sub { color: var(--muted); margin: 0 0 20px 0; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .grow { flex: 1 1 auto; }
+    button, select, input[type="number"], input[type="text"] {
+      background: #192653; color: var(--ink); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px; padding: 10px 14px; font-size: 16px; outline: none;
+    }
+    button { cursor: pointer; transition: transform .06s ease, background .2s ease, border-color .2s; }
+    button:hover { transform: translateY(-1px); border-color: rgba(255,255,255,0.3); }
+    .primary { background: #203272; border-color: rgba(122,162,255,.7); box-shadow: inset 0 0 0 1px rgba(122,162,255,.35); }
+    .danger { background: #3e1b2a; border-color: rgba(255,93,93,.5); }
+    .ok { background: #15372a; border-color: rgba(57,217,138,.5); }
+    .tag { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px; font-size: 13px; }
+    .t-red { background: rgba(255,93,93,.15); color: var(--red); border: 1px solid rgba(255,93,93,.4);} 
+    .t-orange { background: rgba(255,161,73,.15); color: var(--orange); border: 1px solid rgba(255,161,73,.4);} 
+    .t-yellow { background: rgba(255,226,74,.15); color: var(--yellow); border: 1px solid rgba(255,226,74,.4);} 
+    .t-green { background: rgba(57,217,138,.18); color: var(--green); border: 1px solid rgba(57,217,138,.4);} 
+
+    .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 840px) { .grid { grid-template-columns: 1.1fr .9fr; } }
+
+    .problem {
+      font-size: clamp(48px, 7vw, 72px); font-weight: 900; letter-spacing: 2px;
+      display: flex; align-items: center; justify-content: center; height: 160px;
+      background: radial-gradient(1200px 400px at 50% -20%, rgba(122,162,255,.08), transparent 60%);
+      border-radius: 16px; border: 1px solid rgba(255,255,255,.06);
+    }
+    .answer-row { display: grid; grid-template-columns: 1fr 120px; gap: 12px; }
+    .status-pip { width: 14px; height: 14px; border-radius: 999px; display: inline-block; }
+    .pip-red { background: var(--red); }
+    .pip-orange { background: var(--orange); }
+    .pip-yellow { background: var(--yellow); }
+    .pip-green { background: var(--green); }
+
+    .small { font-size: 13px; color: var(--muted); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 8px 4px; font-size: 13px; }
+    th { color: var(--muted); font-weight: 600; border-bottom: 1px solid rgba(255,255,255,.08); }
+    tr + tr td { border-top: 1px dashed rgba(255,255,255,.06); }
+    .muted { color: var(--muted); }
+
+    .pill { padding: 6px 10px; border-radius: 999px; background: rgba(255,255,255,.06); font-size: 13px; border: 1px solid rgba(255,255,255,.12); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="card">
+      <h1>Math Facts Sprint</h1>
+      <p class="sub">3-minute sprints with adaptive practice. Greens (<span class="status-pip pip-green"></span>) graduate facts; anything else is queued and prioritized until it goes green 3 times in a row.</p>
+
+      <div class="grid">
+        <div>
+          <div class="row" style="justify-content: space-between; margin-bottom: 8px;">
+            <div class="row" style="gap:8px;">
+              <span class="pill">Stage: <b id="stageLabel">Up to 20</b></span>
+              <span class="pill">Time Left: <b id="timeLeft">–:––</b></span>
+              <span class="pill">Solved: <b id="solvedCount">0</b></span>
+              <span class="pill">Accuracy: <b id="acc">–</b></span>
+            </div>
+            <div class="row">
+              <button id="startBtn" class="primary">Start 3‑min Sprint</button>
+              <button id="stopBtn">Stop</button>
+            </div>
+          </div>
+
+          <div class="problem" id="problemText">Press Start</div>
+          <div class="answer-row" style="margin-top: 12px;">
+            <input id="answerInput" type="number" inputmode="numeric" placeholder="Type answer & hit Enter" disabled />
+            <button id="submitBtn" class="ok" disabled>Submit</button>
+          </div>
+          <div class="row" style="justify-content: space-between; margin-top: 10px;">
+            <div class="row small" style="gap:10px;">
+              <span class="tag t-red"><span class="status-pip pip-red"></span> incorrect</span>
+              <span class="tag t-orange"><span class="status-pip pip-orange"></span> >3s</span>
+              <span class="tag t-yellow"><span class="status-pip pip-yellow"></span> 2–3s</span>
+              <span class="tag t-green"><span class="status-pip pip-green"></span> <2s</span>
+            </div>
+            <div class="row small" style="gap: 8px;">
+              <button id="exportBtn">Export Progress</button>
+              <input id="importFile" type="file" accept="application/json" style="display:none" />
+              <button id="importBtn">Import</button>
+              <button id="resetBtn" class="danger">Full Reset</button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card" style="background: rgba(255,255,255,.03);">
+            <h3 style="margin:0 0 8px 0;">Queue & Stats</h3>
+            <p class="small">Problems in the queue are prioritized. A fact leaves the queue after <b>3 consecutive greens</b>.</p>
+            <table>
+              <thead><tr><th>Fact</th><th>Streak</th><th>Avg (s)</th><th>Last</th></tr></thead>
+              <tbody id="queueBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'math_facts_sprint_v1';
+  const THREE_MIN = 3 * 60 * 1000;
+
+  /** Problem model key: `${op}|${a}|${b}` where op is '+' or '-' */
+  function keyOf(p) { return `${p.op}|${p.a}|${p.b}`; }
+  function parseKey(k){ const [op,a,b]=k.split('|'); return {op, a:+a, b:+b}; }
+  function labelOf(p){ return `${p.a} ${p.op} ${p.b}`; }
+
+  const ui = {
+    startBtn: document.getElementById('startBtn'),
+    stopBtn: document.getElementById('stopBtn'),
+    resetBtn: document.getElementById('resetBtn'),
+    exportBtn: document.getElementById('exportBtn'),
+    importBtn: document.getElementById('importBtn'),
+    importFile: document.getElementById('importFile'),
+
+    problemText: document.getElementById('problemText'),
+    answerInput: document.getElementById('answerInput'),
+    submitBtn: document.getElementById('submitBtn'),
+
+    stageLabel: document.getElementById('stageLabel'),
+    timeLeft: document.getElementById('timeLeft'),
+    solvedCount: document.getElementById('solvedCount'),
+    acc: document.getElementById('acc'),
+
+    queueBody: document.getElementById('queueBody'),
+  };
+
+  const initialState = () => ({
+    stageMax: 20, // 20 -> 50 -> 100
+    problems: {}, // key -> { seen, correct, streakGreen, times: [ms...], lastMs, lastStatus }
+    totals: { attempted: 0, correct: 0 },
+  });
+
+  let state = load() || seed(initialState());
+  let sprint = { running:false, endsAt:0, current:null, startedAt:0, interval:null };
+
+  function seed(s){
+    // build full set for current stage
+    ensureProblemsForStage(s.stageMax, s);
+    save(s);
+    return s;
+  }
+
+  function ensureProblemsForStage(max, s=state){
+    const sumMax = max*2; // e.g., up to 20 -> max sum 40
+    for(let a=1;a<=max;a++){
+      for(let b=1;b<=max;b++){
+        // addition if within cap
+        if (a + b <= sumMax) upsert({op:'+', a, b}, s);
+        // subtraction only when non-negative result: a - b >= 0
+        if (a - b >= 0) upsert({op:'-', a, b}, s);
+      }
+    }
+  }
+
+  function upsert(p, s=state){
+    const k = keyOf(p);
+    if (!s.problems[k]) s.problems[k] = { seen:0, correct:0, streakGreen:0, times:[], lastMs:null, lastStatus:null };
+  }
+
+  function save(s=state){ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+  function load(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch(e){ return null; } }
+
+  function formatTime(ms){
+    const sec = Math.max(0, Math.ceil(ms/1000));
+    const m = Math.floor(sec/60), s = sec%60;
+    return `${m}:${String(s).padStart(2,'0')}`;
+  }
+
+  function statusFrom(ms, correct){
+    if (!correct) return 'red';
+    const s = ms/1000;
+    if (s > 3) return 'orange';
+    if (s > 2) return 'yellow';
+    return 'green';
+  }
+
+  function answerOf(p){ return p.op==='+' ? p.a + p.b : p.a - p.b; }
+  function pickProblem(){
+    const entries = Object.entries(state.problems);
+    // Build queue: streak < 3
+    const queue = entries.filter(([k,v])=> v.streakGreen < 3);
+    const pool = queue.length ? weightedSample(queue, entries) : entries;
+    const [k] = pool[Math.floor(Math.random()*pool.length)];
+    return parseKey(k);
+  }
+
+  function weightedSample(queue, all){
+    // Prioritize queue ~85%, but allow some variety
+    const pack = [];
+    for (const x of queue) pack.push(x);
+    const needed = Math.min(all.length, Math.floor(queue.length*0.2));
+    // sprinkle a few mastered items to keep everything fresh
+    const mastered = all.filter(([k,v])=> v.streakGreen >= 3);
+    for (let i=0;i<needed && mastered[i];i++) pack.push(mastered[i]);
+    return pack.length ? pack : all;
+  }
+
+  function renderQueue(){
+    const rows = Object.entries(state.problems)
+      .filter(([k,v])=> v.streakGreen < 3)
+      .sort((a,b)=> (b[1].streakGreen - a[1].streakGreen) || ((b[1].times.at(-1)||0) - (a[1].times.at(-1)||0)))
+      .slice(0, 50)
+      .map(([k,v])=>{
+        const p = parseKey(k);
+        const avg = v.times.length ? (v.times.reduce((m,x)=>m+x,0)/v.times.length)/1000 : null;
+        const last = v.lastMs!=null ? (v.lastMs/1000).toFixed(2)+'s' : '—';
+        return `<tr><td class="mono">${labelOf(p)}</td><td>${v.streakGreen}/3</td><td>${avg?avg.toFixed(2)+'s':'—'}</td><td>${last} ${statusDot(v.lastStatus)}</td></tr>`;
+      }).join('');
+    ui.queueBody.innerHTML = rows || `<tr><td colspan="4" class="muted">Queue is empty. 🎉 All facts green at least 3× for this stage.</td></tr>`;
+  }
+
+  function statusDot(s){
+    if(!s) return '';
+    const cls = s==='red'?'pip-red': s==='orange'?'pip-orange': s==='yellow'?'pip-yellow':'pip-green';
+    return `<span class="status-pip ${cls}" style="vertical-align: middle; margin-left:6px"></span>`;
+  }
+
+  function updateStageLabel(){
+    ui.stageLabel.textContent = state.stageMax === 20 ? 'Up to 20' : state.stageMax === 50 ? 'Up to 50' : 'Up to 100';
+  }
+
+  function maybeAdvanceStage(){
+    const remaining = Object.values(state.problems).some(v=> v.streakGreen < 3);
+    if (!remaining) {
+      if (state.stageMax === 20) {
+        state.stageMax = 50; ensureProblemsForStage(50); save(); toast("Great work! Advancing to 50.");
+      } else if (state.stageMax === 50) {
+        state.stageMax = 100; ensureProblemsForStage(100); save(); toast("Level up! Advancing to 100.");
+      } else {
+        toast("All stages cleared! You’re a math meteor.");
+      }
+      updateStageLabel();
+      renderQueue();
+    }
+  }
+
+  function toast(msg){
+    console.log(msg); // minimalist toast; could be enhanced later
+  }
+
+  function setRunning(r){
+    sprint.running = r;
+    ui.answerInput.disabled = !r;
+    ui.submitBtn.disabled = !r;
+    if (r) ui.answerInput.focus();
+  }
+
+  function beginSprint(){
+    if (sprint.running) return;
+    setRunning(true);
+    sprint.endsAt = Date.now() + THREE_MIN;
+    sprint.interval = setInterval(tick, 200);
+    nextProblem();
+    tick();
+  }
+
+  function stopSprint(){
+    if (!sprint.running) return;
+    clearInterval(sprint.interval);
+    sprint.interval = null;
+    setRunning(false);
+    ui.problemText.textContent = 'Paused';
+  }
+
+  function tick(){
+    const left = Math.max(0, sprint.endsAt - Date.now());
+    ui.timeLeft.textContent = formatTime(left);
+    if (left <= 0) { stopSprint(); ui.problemText.textContent = 'Time! 🎉 Nice work.'; }
+  }
+
+  function nextProblem(){
+    sprint.current = pickProblem();
+    sprint.startedAt = performance.now();
+    ui.problemText.textContent = labelOf(sprint.current);
+    ui.answerInput.value = '';
+  }
+
+  function submit(){
+    if (!sprint.running || !sprint.current) return;
+    const val = Number(ui.answerInput.value);
+    const elapsed = performance.now() - sprint.startedAt;
+    const correct = val === answerOf(sprint.current);
+    const status = statusFrom(elapsed, correct);
+
+    const k = keyOf(sprint.current);
+    const rec = state.problems[k];
+    rec.seen += 1;
+    state.totals.attempted += 1;
+    if (correct) state.totals.correct += 1;
+
+    rec.lastMs = elapsed; rec.lastStatus = status; rec.times.push(elapsed);
+    if (rec.times.length > 50) rec.times.shift();
+
+    if (status === 'green') {
+      rec.streakGreen += 1;
+    } else {
+      rec.streakGreen = 0; // break the streak if not green
+    }
+
+    save();
+    updateHUD();
+    renderQueue();
+    maybeAdvanceStage();
+    nextProblem();
+  }
+
+  function updateHUD(){
+    ui.solvedCount.textContent = String(state.totals.attempted);
+    const acc = state.totals.attempted ? Math.round((state.totals.correct/state.totals.attempted)*100) : 0;
+    ui.acc.textContent = state.totals.attempted ? acc + '%' : '–';
+  }
+
+  // Export / Import / Reset
+  ui.exportBtn.addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `math-facts-progress-${Date.now()}.json`; a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  ui.importBtn.addEventListener('click', ()=> ui.importFile.click());
+  ui.importFile.addEventListener('change', (e)=>{
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const incoming = JSON.parse(reader.result);
+        if (!incoming || typeof incoming !== 'object') throw new Error('Invalid file');
+        state = incoming; save(state);
+        updateStageLabel(); updateHUD(); renderQueue();
+        toast('Progress imported.');
+      } catch(err){ alert('Import failed: ' + err.message); }
+    };
+    reader.readAsText(file);
+  });
+
+  ui.resetBtn.addEventListener('click', ()=>{
+    if (!confirm('This will erase all progress and start over. Continue?')) return;
+    state = seed(initialState());
+    updateStageLabel(); updateHUD(); renderQueue();
+    toast('Progress reset.');
+  });
+
+  // Controls
+  ui.startBtn.addEventListener('click', beginSprint);
+  ui.stopBtn.addEventListener('click', stopSprint);
+  ui.submitBtn.addEventListener('click', submit);
+  ui.answerInput.addEventListener('keydown', (e)=>{
+    if (e.key === 'Enter') submit();
+  });
+
+  // Initial paint
+  updateStageLabel();
+  updateHUD();
+  renderQueue();
+})();
+</script>
+</body>
+</html>
