@@ -80,7 +80,7 @@
       <div class="grid">
         <div>
           <div class="row" style="justify-content: space-between; margin-bottom: 8px;">
-            <div class="row" style="gap:8px;">
+            <div class="row" style="gap:8px; flex-wrap:wrap;">
               <span class="pill">Stage: <b id="stageLabel">Up to 20</b></span>
               <span class="pill">Time Left: <b id="timeLeft">–:––</b></span>
               <span class="pill">Solved: <b id="solvedCount">0</b></span>
@@ -94,33 +94,64 @@
 
           <div class="problem" id="problemText">Press Start</div>
           <div class="answer-row" style="margin-top: 12px;">
-            <input id="answerInput" type="number" inputmode="numeric" placeholder="Type answer & hit Enter" disabled />
-            <button id="submitBtn" class="ok" disabled>Submit</button>
+            <input id="answerInput" type="text" inputmode="numeric" placeholder="Tap numbers or type & hit Enter" />
+            <button id="submitBtn" class="ok">Submit</button>
           </div>
-          <div class="row" style="justify-content: space-between; margin-top: 10px;">
-            <div class="row small" style="gap:10px;">
+
+          <div id="keypad" class="keypad">
+            <button data-digit="1">1</button>
+            <button data-digit="2">2</button>
+            <button data-digit="3">3</button>
+            <button data-digit="4">4</button>
+            <button data-digit="5">5</button>
+            <button data-digit="6">6</button>
+            <button data-digit="7">7</button>
+            <button data-digit="8">8</button>
+            <button data-digit="9">9</button>
+            <button data-action="clear">C</button>
+            <button data-digit="0">0</button>
+            <button data-action="backspace">⌫</button>
+          </div>
+          <div class="keypad-enter-row">
+            <button id="keypadEnter" class="primary" style="width:100%">Enter</button>
+          </div>
+
+          <div class="row" style="justify-content: space-between; margin-top: 10px; align-items:flex-start; gap:8px; flex-wrap:wrap;">
+            <div class="row small" style="gap:10px; flex-wrap:wrap;">
               <span class="tag t-red"><span class="status-pip pip-red"></span> incorrect</span>
-              <span class="tag t-orange"><span class="status-pip pip-orange"></span> >3s</span>
-              <span class="tag t-yellow"><span class="status-pip pip-yellow"></span> 2–3s</span>
-              <span class="tag t-green"><span class="status-pip pip-green"></span> <2s</span>
+              <span class="tag t-green"><span class="status-pip pip-green"></span> <span id="legendGreen">≤2s</span></span>
+              <span class="tag t-yellow"><span class="status-pip pip-yellow"></span> <span id="legendYellow">>2s ≤3s</span></span>
+              <span class="tag t-orange"><span class="status-pip pip-orange"></span> <span id="legendOrange">>3s</span></span>
             </div>
-            <div class="row small" style="gap: 8px;">
-              <button id="exportBtn">Export Progress</button>
-              <input id="importFile" type="file" accept="application/json" style="display:none" />
-              <button id="importBtn">Import</button>
-              <button id="resetBtn" class="danger">Full Reset</button>
-            </div>
+          </div>
+
+          <div class="row small" style="margin-top: 8px; gap: 8px; flex-wrap:wrap; align-items:center;">
+            <span>Speed thresholds (seconds):</span>
+            <label>Green ≤ <input id="greenThresholdInput" type="number" min="0.5" max="20" step="0.5" style="width:64px;" />s</label>
+            <label>Yellow ≤ <input id="yellowThresholdInput" type="number" min="0.5" max="30" step="0.5" style="width:64px;" />s</label>
+          </div>
+
+          <div class="row small" style="margin-top: 10px; justify-content:flex-end; gap:8px; flex-wrap:wrap;">
+            <button id="exportBtn">Export Progress</button>
+            <input id="importFile" type="file" accept="application/json" style="display:none" />
+            <button id="importBtn">Import</button>
+            <button id="resetBtn" class="danger">Full Reset</button>
           </div>
         </div>
 
         <div>
           <div class="card" style="background: rgba(255,255,255,.03);">
-            <h3 style="margin:0 0 8px 0;">Queue & Stats</h3>
-            <p class="small">Problems in the queue are prioritized. A fact leaves the queue after <b>3 consecutive greens</b>.</p>
-            <table>
-              <thead><tr><th>Fact</th><th>Streak</th><th>Avg (s)</th><th>Last</th></tr></thead>
-              <tbody id="queueBody"></tbody>
-            </table>
+            <div class="row" style="justify-content: space-between; align-items:center;">
+              <h3 style="margin:0;">Queue & Stats</h3>
+              <button id="toggleQueueBtn" class="pill" style="font-size:12px; padding:4px 10px;">Hide</button>
+            </div>
+            <div id="queuePanel" style="margin-top:8px;">
+              <p class="small">Problems in the queue are prioritized. A fact leaves the queue after <b>3 consecutive greens</b>.</p>
+              <table>
+                <thead><tr><th>Fact</th><th>Streak</th><th>Avg (s)</th><th>Last</th></tr></thead>
+                <tbody id="queueBody"></tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -132,7 +163,6 @@
   const STORAGE_KEY = 'math_facts_sprint_v1';
   const THREE_MIN = 3 * 60 * 1000;
 
-  /** Problem model key: `${op}|${a}|${b}` where op is '+' or '-' */
   function keyOf(p) { return `${p.op}|${p.a}|${p.b}`; }
   function parseKey(k){ const [op,a,b]=k.split('|'); return {op, a:+a, b:+b}; }
   function labelOf(p){ return `${p.a} ${p.op} ${p.b}`; }
@@ -155,43 +185,58 @@
     acc: document.getElementById('acc'),
 
     queueBody: document.getElementById('queueBody'),
+    toggleQueueBtn: document.getElementById('toggleQueueBtn'),
+    queuePanel: document.getElementById('queuePanel'),
+
+    keypad: document.getElementById('keypad'),
+    keypadEnter: document.getElementById('keypadEnter'),
+
+    greenThresholdInput: document.getElementById('greenThresholdInput'),
+    yellowThresholdInput: document.getElementById('yellowThresholdInput'),
+    legendGreen: document.getElementById('legendGreen'),
+    legendYellow: document.getElementById('legendYellow'),
+    legendOrange: document.getElementById('legendOrange'),
   };
 
   const initialState = () => ({
-    stageMax: 20, // 20 -> 50 -> 100
-    problems: {}, // key -> { seen, correct, streakGreen, times: [ms...], lastMs, lastStatus }
+    stageMax: 20,
+    problems: {},
     totals: { attempted: 0, correct: 0 },
+    config: { greenSec: 2, yellowSec: 3 },
   });
 
-  let state = load() || seed(initialState());
-  let sprint = { running:false, endsAt:0, current:null, startedAt:0, interval:null };
-
-  function seed(s){
-    // build full set for current stage
-    ensureProblemsForStage(s.stageMax, s);
-    save(s);
-    return s;
-  }
-
-  function ensureProblemsForStage(max, s=state){
-    const sumMax = max*2; // e.g., up to 20 -> max sum 40
+  function ensureProblemsForStage(max, s){
+    const sumMax = max * 2;
     for(let a=1;a<=max;a++){
       for(let b=1;b<=max;b++){
-        // addition if within cap
         if (a + b <= sumMax) upsert({op:'+', a, b}, s);
-        // subtraction only when non-negative result: a - b >= 0
         if (a - b >= 0) upsert({op:'-', a, b}, s);
       }
     }
   }
 
-  function upsert(p, s=state){
+  function upsert(p, s){
     const k = keyOf(p);
     if (!s.problems[k]) s.problems[k] = { seen:0, correct:0, streakGreen:0, times:[], lastMs:null, lastStatus:null };
   }
 
-  function save(s=state){ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+  function ensureConfig(s){
+    if (!s.config) s.config = { greenSec: 2, yellowSec: 3 };
+    if (typeof s.config.greenSec !== 'number' || isNaN(s.config.greenSec)) s.config.greenSec = 2;
+    if (typeof s.config.yellowSec !== 'number' || isNaN(s.config.yellowSec)) s.config.yellowSec = s.config.greenSec + 1;
+    if (s.config.yellowSec <= s.config.greenSec) s.config.yellowSec = s.config.greenSec + 1;
+  }
+
+  function save(s){ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
   function load(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch(e){ return null; } }
+
+  let state = load() || initialState();
+  ensureConfig(state);
+  ensureProblemsForStage(state.stageMax, state);
+  save(state);
+
+  let sprint = { running:false, endsAt:0, current:null, startedAt:0, interval:null };
+  let queueCollapsed = false;
 
   function formatTime(ms){
     const sec = Math.max(0, Math.ceil(ms/1000));
@@ -202,15 +247,17 @@
   function statusFrom(ms, correct){
     if (!correct) return 'red';
     const s = ms/1000;
-    if (s > 3) return 'orange';
-    if (s > 2) return 'yellow';
-    return 'green';
+    const g = state.config.greenSec;
+    const y = state.config.yellowSec;
+    if (s <= g) return 'green';
+    if (s <= y) return 'yellow';
+    return 'orange';
   }
 
   function answerOf(p){ return p.op==='+' ? p.a + p.b : p.a - p.b; }
+
   function pickProblem(){
     const entries = Object.entries(state.problems);
-    // Build queue: streak < 3
     const queue = entries.filter(([k,v])=> v.streakGreen < 3);
     const pool = queue.length ? weightedSample(queue, entries) : entries;
     const [k] = pool[Math.floor(Math.random()*pool.length)];
@@ -218,14 +265,18 @@
   }
 
   function weightedSample(queue, all){
-    // Prioritize queue ~85%, but allow some variety
     const pack = [];
     for (const x of queue) pack.push(x);
-    const needed = Math.min(all.length, Math.floor(queue.length*0.2));
-    // sprinkle a few mastered items to keep everything fresh
     const mastered = all.filter(([k,v])=> v.streakGreen >= 3);
-    for (let i=0;i<needed && mastered[i];i++) pack.push(mastered[i]);
+    const needed = Math.min(mastered.length, Math.floor(queue.length * 0.2));
+    for (let i=0;i<needed;i++) pack.push(mastered[i]);
     return pack.length ? pack : all;
+  }
+
+  function statusDot(s){
+    if(!s) return '';
+    const cls = s==='red'?'pip-red': s==='orange'?'pip-orange': s==='yellow'?'pip-yellow':'pip-green';
+    return `<span class="status-pip ${cls}" style="vertical-align: middle; margin-left:6px"></span>`;
   }
 
   function renderQueue(){
@@ -242,12 +293,6 @@
     ui.queueBody.innerHTML = rows || `<tr><td colspan="4" class="muted">Queue is empty. 🎉 All facts green at least 3× for this stage.</td></tr>`;
   }
 
-  function statusDot(s){
-    if(!s) return '';
-    const cls = s==='red'?'pip-red': s==='orange'?'pip-orange': s==='yellow'?'pip-yellow':'pip-green';
-    return `<span class="status-pip ${cls}" style="vertical-align: middle; margin-left:6px"></span>`;
-  }
-
   function updateStageLabel(){
     ui.stageLabel.textContent = state.stageMax === 20 ? 'Up to 20' : state.stageMax === 50 ? 'Up to 50' : 'Up to 100';
   }
@@ -256,9 +301,9 @@
     const remaining = Object.values(state.problems).some(v=> v.streakGreen < 3);
     if (!remaining) {
       if (state.stageMax === 20) {
-        state.stageMax = 50; ensureProblemsForStage(50); save(); toast("Great work! Advancing to 50.");
+        state.stageMax = 50; ensureProblemsForStage(50, state); save(state); toast("Great work! Advancing to 50.");
       } else if (state.stageMax === 50) {
-        state.stageMax = 100; ensureProblemsForStage(100); save(); toast("Level up! Advancing to 100.");
+        state.stageMax = 100; ensureProblemsForStage(100, state); save(state); toast("Level up! Advancing to 100.");
       } else {
         toast("All stages cleared! You’re a math meteor.");
       }
@@ -267,14 +312,13 @@
     }
   }
 
-  function toast(msg){
-    console.log(msg); // minimalist toast; could be enhanced later
-  }
+  function toast(msg){ console.log(msg); }
 
   function setRunning(r){
     sprint.running = r;
     ui.answerInput.disabled = !r;
     ui.submitBtn.disabled = !r;
+    ui.keypadEnter.disabled = !r;
     if (r) ui.answerInput.focus();
   }
 
@@ -310,7 +354,11 @@
 
   function submit(){
     if (!sprint.running || !sprint.current) return;
-    const val = Number(ui.answerInput.value);
+    const raw = ui.answerInput.value.trim();
+    if (raw === '') return;
+    const val = Number(raw);
+    if (!Number.isFinite(val)) return;
+
     const elapsed = performance.now() - sprint.startedAt;
     const correct = val === answerOf(sprint.current);
     const status = statusFrom(elapsed, correct);
@@ -327,10 +375,10 @@
     if (status === 'green') {
       rec.streakGreen += 1;
     } else {
-      rec.streakGreen = 0; // break the streak if not green
+      rec.streakGreen = 0;
     }
 
-    save();
+    save(state);
     updateHUD();
     renderQueue();
     maybeAdvanceStage();
@@ -341,6 +389,21 @@
     ui.solvedCount.textContent = String(state.totals.attempted);
     const acc = state.totals.attempted ? Math.round((state.totals.correct/state.totals.attempted)*100) : 0;
     ui.acc.textContent = state.totals.attempted ? acc + '%' : '–';
+  }
+
+  function updateLegend(){
+    const g = state.config.greenSec;
+    const y = state.config.yellowSec;
+    ui.legendGreen.textContent = `≤${g}s`;
+    ui.legendYellow.textContent = `>${g}s ≤${y}s`;
+    ui.legendOrange.textContent = `>${y}s`;
+    ui.greenThresholdInput.value = g;
+    ui.yellowThresholdInput.value = y;
+  }
+
+  function updateQueueVisibility(){
+    ui.queuePanel.style.display = queueCollapsed ? 'none' : 'block';
+    ui.toggleQueueBtn.textContent = queueCollapsed ? 'Show' : 'Hide';
   }
 
   // Export / Import / Reset
@@ -361,8 +424,10 @@
       try {
         const incoming = JSON.parse(reader.result);
         if (!incoming || typeof incoming !== 'object') throw new Error('Invalid file');
+        ensureConfig(incoming);
+        ensureProblemsForStage(incoming.stageMax || 20, incoming);
         state = incoming; save(state);
-        updateStageLabel(); updateHUD(); renderQueue();
+        updateStageLabel(); updateHUD(); renderQueue(); updateLegend();
         toast('Progress imported.');
       } catch(err){ alert('Import failed: ' + err.message); }
     };
@@ -371,8 +436,10 @@
 
   ui.resetBtn.addEventListener('click', ()=>{
     if (!confirm('This will erase all progress and start over. Continue?')) return;
-    state = seed(initialState());
-    updateStageLabel(); updateHUD(); renderQueue();
+    state = initialState();
+    ensureProblemsForStage(state.stageMax, state);
+    save(state);
+    updateStageLabel(); updateHUD(); renderQueue(); ensureConfig(state); updateLegend();
     toast('Progress reset.');
   });
 
@@ -384,10 +451,52 @@
     if (e.key === 'Enter') submit();
   });
 
+  // Keypad
+  ui.keypad.addEventListener('click', (e)=>{
+    const btn = e.target.closest('button');
+    if (!btn || ui.answerInput.disabled) return;
+    const digit = btn.getAttribute('data-digit');
+    const action = btn.getAttribute('data-action');
+    if (digit !== null) {
+      ui.answerInput.value += digit;
+    } else if (action === 'clear') {
+      ui.answerInput.value = '';
+    } else if (action === 'backspace') {
+      ui.answerInput.value = ui.answerInput.value.slice(0,-1);
+    }
+    ui.answerInput.focus();
+  });
+  ui.keypadEnter.addEventListener('click', submit);
+
+  // Threshold changes
+  ui.greenThresholdInput.addEventListener('change', ()=>{
+    let g = parseFloat(ui.greenThresholdInput.value);
+    if (!Number.isFinite(g) || g <= 0) g = 1;
+    state.config.greenSec = g;
+    if (state.config.yellowSec <= g) state.config.yellowSec = g + 1;
+    save(state);
+    updateLegend();
+  });
+  ui.yellowThresholdInput.addEventListener('change', ()=>{
+    let y = parseFloat(ui.yellowThresholdInput.value);
+    if (!Number.isFinite(y) || y <= state.config.greenSec) y = state.config.greenSec + 1;
+    state.config.yellowSec = y;
+    save(state);
+    updateLegend();
+  });
+
+  // Queue collapse
+  ui.toggleQueueBtn.addEventListener('click', ()=>{
+    queueCollapsed = !queueCollapsed;
+    updateQueueVisibility();
+  });
+
   // Initial paint
   updateStageLabel();
   updateHUD();
   renderQueue();
+  updateLegend();
+  updateQueueVisibility();
 })();
 </script>
 </body>
